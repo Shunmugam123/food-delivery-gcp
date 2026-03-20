@@ -25,6 +25,20 @@
             <button type="submit">Place Order</button>
         </form>
         <div id="message" class="message"></div>
+
+        <div id="orderStatusSection" style="display: none;">
+            <h2>Order Status</h2>
+            <p>Order ID: <span id="orderIdDisplay"></span></p>
+            <p>Status: <span id="orderStatusDisplay"></span></p>
+            <p>Estimated Waiting Time: <span id="waitingTimeDisplay"></span> minutes</p>
+            <button id="updateStatusBtn" style="display: none;">Update Status (Admin)</button>
+             <select id="newStatusSelect" style="display: none;">
+                <option value="ACCEPTED">ACCEPTED</option>
+                <option value="PREPARING">PREPARING</option>
+                <option value="PICKED_UP">PICKED_UP</option>
+                <option value="DELIVERED">DELIVERED</option>
+            </select>
+        </div>
     </div>
 
     <script src="script.js"></script>

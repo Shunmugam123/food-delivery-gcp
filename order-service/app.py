@@ -99,6 +99,41 @@ def get_order_status(order_id):
     
     return jsonify(current_order_status), 200
 
+@app.route('/orders/<order_id>/status', methods=['PUT'])
+def update_order_status(order_id):
+    order = orders.get(order_id)
+    if not order:
+        return jsonify({"message": "Order not found"}), 404
+
+    if not request.is_json:
+        return jsonify({"message": "Request must be JSON"}), 400
+    
+    data = request.get_json()
+    new_status = data.get('status')
+
+    if not new_status:
+        return jsonify({"message": "Missing 'status' in request"}), 400
+    
+    order["status"] = new_status
+    print(f"Order {order_id} status updated to {new_status}")
+
+    # Publish status update to Pub/Sub
+    if publisher:
+        try:
+            message_data = {
+                "orderId": order_id,
+                "status": new_status,
+                "restaurantId": order["restaurantId"], # Include relevant details
+                "items": order["items"],
+                "deliveryAddress": order["deliveryAddress"]
+            }
+            future = publisher.publish(topic_path, json.dumps(message_data).encode("utf-8"))
+            print(f"Status update published to Pub/Sub for order {order_id}: {future.result()}")
+        except Exception as e:
+            print(f"Error publishing status update to Pub/Sub: {e}")
+
+    return jsonify({"message": f"Order {order_id} status updated to {new_status}", "order": order}), 200
+
 @app.route('/', methods=['GET'])
 def health_check():
     return "Order Service is running!"
