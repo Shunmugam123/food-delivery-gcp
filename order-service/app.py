@@ -3,8 +3,12 @@ import os
 import uuid
 from google.cloud import pubsub_v1
 import json
+from datetime import datetime # Import datetime
 
 app = Flask(__name__)
+
+# In-memory storage for orders {order_id: order_details}
+orders = {}
 
 # Placeholder for Pub/Sub publisher client
 # In a real application, this would be initialized correctly with credentials
@@ -42,6 +46,18 @@ def place_order():
         return jsonify({"message": "Missing required order information"}), 400
 
     order_id = str(uuid.uuid4())
+    current_time = datetime.now()
+
+    # Store order in in-memory dictionary
+    orders[order_id] = {
+        "orderId": order_id,
+        "restaurantId": restaurant_id,
+        "items": items,
+        "deliveryAddress": delivery_address,
+        "status": "ORDER_PLACED",
+        "timestamp": current_time.isoformat(), # Store creation time
+        "estimatedWaitingTime": 30 # Initial estimate in minutes
+    }
     print(f"Received order for Restaurant ID: {restaurant_id}, Order ID: {order_id}")
 
     # Simulate publishing to Pub/Sub
@@ -62,6 +78,26 @@ def place_order():
             # In a real system, you'd handle this more robustly (e.g., retry, dead-letter queue)
 
     return jsonify({"message": "Order placed successfully", "orderId": order_id}), 200
+
+@app.route('/orders/<order_id>', methods=['GET'])
+def get_order_status(order_id):
+    order = orders.get(order_id)
+    if not order:
+        return jsonify({"message": "Order not found"}), 404
+
+    # Calculate remaining waiting time
+    # For demonstration, let's assume it reduces by 1 minute for every 10 seconds passed
+    order_timestamp = datetime.fromisoformat(order["timestamp"])
+    time_elapsed = (datetime.now() - order_timestamp).total_seconds()
+    minutes_elapsed = int(time_elapsed / 10) # 1 minute reduction for every 10 seconds for demo
+
+    remaining_time = max(0, order["estimatedWaitingTime"] - minutes_elapsed)
+    
+    # Return a copy to avoid modifying the stored order directly in this endpoint
+    current_order_status = order.copy()
+    current_order_status["estimatedWaitingTime"] = remaining_time
+    
+    return jsonify(current_order_status), 200
 
 @app.route('/', methods=['GET'])
 def health_check():
